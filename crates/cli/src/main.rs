@@ -116,7 +116,16 @@ fn parse_path_with_position(argument_str: &str) -> anyhow::Result<String> {
                         }
                         match fs::canonicalize(parent) {
                             Ok(parent) => Ok(parent.join(path.file_name().unwrap())),
-                            Err(_) => Err(e),
+                            Err(_) => {
+                                fs::create_dir_all(parent).with_context(|| {
+                                    format!("failed to create parent directory {:?}", parent)
+                                })?;
+                                let canonicalized_parent = fs::canonicalize(parent)
+                                    .with_context(|| {
+                                        format!("failed to canonicalize parent directory {:?}", parent)
+                                    })?;
+                                Ok(canonicalized_parent.join(path.file_name().unwrap()))
+                            }
                         }
                     } else {
                         Err(e)
