@@ -117,13 +117,9 @@ fn parse_path_with_position(argument_str: &str) -> anyhow::Result<String> {
                         match fs::canonicalize(parent) {
                             Ok(parent) => Ok(parent.join(path.file_name().unwrap())),
                             Err(_) => {
-                                fs::create_dir_all(parent).with_context(|| {
-                                    format!("failed to create parent directory {:?}", parent)
-                                })?;
-                                let canonicalized_parent = fs::canonicalize(parent)
-                                    .with_context(|| {
-                                        format!("failed to canonicalize parent directory {:?}", parent)
-                                    })?;
+                                // Remove .with_context() and just use the raw fs operations
+                                fs::create_dir_all(parent)?;
+                                let canonicalized_parent = fs::canonicalize(parent)?;
                                 Ok(canonicalized_parent.join(path.file_name().unwrap()))
                             }
                         }
@@ -435,8 +431,12 @@ mod linux {
 
                 // libexec is the standard, lib/zed is for Arch (and other non-libexec distros),
                 // ./zed is for the target directory in development builds.
-                let possible_locations =
-                    ["../libexec/zed-editor", "../lib/zed/zed-editor", "./zed"];
+                let possible_locations = [
+                    "../libexec/zed-editor",
+                    "../lib/zed/zed-editor",
+                    "./zed",
+                    "../../../../target/debug/zed",
+                ];
                 possible_locations
                     .iter()
                     .find_map(|p| dir.join(p).canonicalize().ok().filter(|path| path != &cli))
